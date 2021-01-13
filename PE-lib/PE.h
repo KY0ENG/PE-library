@@ -16,8 +16,17 @@
 #include <psapi.h>
 #include <processthreadsapi.h>
 
-#include "usings.h"
 
+#define OBF(x) x
+#define OBFI(x) x
+#define OBF_ASCII(x) x
+#define OBFI_ASCII(x) x
+#define ADV_OBF(x) x
+#define ADV_OBF_W(x) x
+#define OBF_WSTR(x) std::wstring(x)
+#define OBF_STR(x) std::string(x)
+
+#define RESOLVE(a, b) auto _ ## b = reinterpret_cast<fn_ ## b *>(::GetProcAddress(::LoadLibraryA(#a), #b));
 #define RESOLVE_NO_UNHOOK(a, b) \
     auto _ ## b = reinterpret_cast<fn_ ## b *>(::GetProcAddress(::LoadLibraryA(#a), #b));
 

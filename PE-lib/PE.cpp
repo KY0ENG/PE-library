@@ -2,7 +2,6 @@
 //#include "stdafx.h"
 
 #include "PE.h"
-#include "resolver.h"
 
 #define        SET_ERROR            this->SetError( GetLastError() )
 #define        SET_ERROR2(x)        this->_SetError( x, __LINE__, OBFI_ASCII(__FUNCTION__) );
