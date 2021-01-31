@@ -1,57 +1,61 @@
 # PE
 
-Portable Executable structure parsing library able to perform analysis upon PE file, memory dump and in running process. Written ages ago, but hopefully someone will find it useful.
+Lightweight Portable Executable format parsing library for Windows programs. Handy for malware analysis and development purposes.
+Probably _really_ buggy, potentially vulnerable to all sorts of memory corruptions :-) 
+Written agos ago, refactored, fixed, improved, enhanced ad-hoc without a will to rewrite it properly or attempt to find & fix any outstanding memory handling issues.
+
 
 ## Usage
 
-Depending on target to be analysed, one can use:
+Following analysis endpoints are exposed:
 
-* `PE::AnalyseFile` - intended for locally available PE file analysis
-* `PE::AnalyseDump` - for raw process memory dump.
-* `PE::AnalyseMemory` - able to launch analysis starting from specified address in currently working area.
-* `PE::AnalyseProcess` - By specyfing PID one can launch such analysis upon currently running process.
+* `PE::AnalyseFile` - locally available files analysis
+* `PE::AnalyseDump` - raw process memory dump analysis
+* `PE::AnalyseMemory` - analyses memory region mapped at specified process
+* `PE::AnalyseProcess` - analyses remote process main module.
+* `PE::AnalyseProcessModule` - analyses specifed module mapped in the remote process virtual memory.
 
-Also, there is couple of potentially interesting functions, such as:
-* `PE::InsertShellcode` - for quick and simple PE file infection (new section method)
-* `PE::Patch` - for patching PE file
-* `PE::ReadBytes` and `PE::WriteBytes` - for read/write in file/process
-* `PE::HookIAT` and `PE::HookEAT` - for hooking IAT/EAT entry address (running it on a local file won't do any magic, cause IAT/EAT will be populated by the OS Loader during program's launch anyway, thus clobbering our hook)
+Other exposed functionality worth taking a shot:
 
-File `test.cpp` presents sample usage:
+* `PE::InsertShellcode` - inserts input shellcode into a newly injected PE section
+* `PE::ReadBytes` and `PE::WriteBytes` - file/process I/O
+* `PE::HookIAT` and `PE::HookEAT` - for hooking IAT/EAT thunks (running it on a local file won't do any magic, cause IAT/EAT will be populated by the OS Loader during program's launch anyway, thus clobbering our hook)
+* `PE::CreateSection` and `PE::RemoveSection` - adds/remove PE section
+* `PE::HasOverlay` and `PE::ReadOverlay` - for working with file's overlay
+* `PE::UpdateHeaders` - adjusts OptionalHeader after any PE structures field was altered.
+* `PE::ReadSection` - reads specified section bytes.
+
+
+## Demo
+
+For demo purposes of how to use the library, the small utility `peParser` is included.
+Its use is straightforward:
 
 ```
-	PE pe;
+cmd> peParser86.exe
 
-	if( type == process)
-	{
-		printf( "Analysing process with pid = %d\r\n", (int)dwPID);
+Usage:
 
-		if( strlen( szModule) == 0){
-			if( !pe.AnalyseProcess( dwPID) )
-				printf( ... );
-		}else
-			if( !pe.AnalyseProcessModule( dwPID, szModule))
-				printf( ... );
-	}
-	else if( type == dump )
-	{
-		printf( "Analysing dump file '%s'\r\n", szFile);
+    1) Analyse file:
+    cmd> peParser file <filepath>
 
-		if( !pe.AnalyseDump( szFile) )
-			printf( ... );
-	}
-	else if( type == file )
-	{
-		printf( "Analysing PE image file '%s'\r\n", szFile);
+    2) Analyse process:
+    cmd> peParser process <PID>
 
-		if( !pe.AnalyseFile( szFile))
-			printf( ... );
-	}
+    3) Analyse process' module:
+    cmd> peParser module <PID> <moduleName|0xModuleAddress>
 
-	for( unsigned u = 0; u < pe.vImports.size(); u++ )
-	{
-		printf( "\r\n\tImport: %s", pe.vImports[u].szFunction );
-	}
+    4) Analyse dump file:
+    cmd> peParser dump <filepath>
+
+    5) Analyse injected, not-mapped (MEM_PRIVATE) shellcode:
+    cmd> peParser memory <PID> <address>
 ```
 
-Yeah, my PEInfo project should be right away refactored to utilize this library. But nah, I don't have neither time nor willingness to do so.
+## Known Issues
+
+Billions and billions and billions and billions and billions and billions and billions and billions and billions and billions and billions and billions and billions and billions and billions and billions and billions [...] and billions of programming errors were probably made in its implementation. As said, I've got no will to find & fix them. 
+
+My typical use of this library is for the Malware Development for Red Team purposes. Such use case requires merely a lightweight codebase capable of analysing mostly well-structured system binaries and for these needs a current implementation excels pretty well.
+
+You are free to go ahead and train your vulnerability analysis & exploitation skills by crafting dodgy PE structures attempting to exploit my tasty bugs. :-) Ohhh, and if you do - please do mind opening an issue as I would be keen on fixing them eventually!

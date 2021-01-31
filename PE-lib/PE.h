@@ -26,10 +26,6 @@
 #define OBF_WSTR(x) std::wstring(x)
 #define OBF_STR(x) std::string(x)
 
-#define RESOLVE(a, b) auto _ ## b = reinterpret_cast<fn_ ## b *>(::GetProcAddress(::LoadLibraryA(#a), #b));
-#define RESOLVE_NO_UNHOOK(a, b) \
-    auto _ ## b = reinterpret_cast<fn_ ## b *>(::GetProcAddress(::LoadLibraryA(#a), #b));
-
 ///////////////////////////////////
 
 #define PE_MAX_SECTIONS_COUNT           96          // according to Microsoft "pecoff_v8.doc"
@@ -161,7 +157,7 @@ class PE
 
 public:
 
-    enum AccessMethod
+    enum class AccessMethod
     {
         Arbitrary = 0,
         File_Begin,
@@ -446,7 +442,7 @@ private:
 		_hMapOfFile = hFileHandle = (HANDLE)INVALID_HANDLE_VALUE;
 		lpMapOfFile = nullptr;
         analysisType = AnalysisType::None;
-        lpDOSStub.clear();
+        if(!lpDOSStub.empty()) lpDOSStub.clear();
 	}
 
 	// More detailed SetError version
@@ -468,6 +464,8 @@ private:
     bool AppendShellcode(BYTE* whereToReturn, uint8_t *shellcode, size_t sizeOfShellcode, __IMAGE_SECTION_HEADER *imgNewSection);
 
     bool ApplyAllRelocs(ULONGLONG newImageBase);
+
+    DWORD GetSafeSectionSize(const __IMAGE_SECTION_HEADER& sect) const;
 
     bool _OpenFile();
 
