@@ -910,7 +910,7 @@ bool PE::ParseIAT(DWORD dwAddressOfIAT)
 
                     impFunc.wOrdinal = 0;
                     impFunc.dwPtrValueRVA = itdTmp32->u1.Function;
-                    impFunc.dwPtrValueVA = RVA2VA64(itdTmp32->u1.Function);
+                    impFunc.dwPtrValueVA = RVA2VA32(itdTmp32->u1.Function);
 
                     strncpy_s(impFunc.szFunction, (const char*)iibnTmp->Name, sizeof(impFunc.szFunction) - 1);
                     for (size_t i = 0; i < sizeof(impFunc.szFunction); i++)
@@ -1096,27 +1096,37 @@ bool PE::ParseEAT(DWORD dwAddressOfEAT)
     const DWORD dwSizeOfEAT = (this->bIs86) ? imgNtHdrs32.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size :
         imgNtHdrs64.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
 
-    // Now we taking access to IMAGE_EXPORT_DIRECTORY
     offset = reinterpret_cast<intptr_t>(lpBuffer) + this->RVA2RAW(dwAddr);
-    this->imgExportDirectory = *reinterpret_cast<PIMAGE_EXPORT_DIRECTORY>(offset);
+    this->imgExportDirectory.d = *reinterpret_cast<PIMAGE_EXPORT_DIRECTORY>(offset);
 
     // Validating image_export_directory
-    if (imgExportDirectory.AddressOfFunctions == 0 &&
-        imgExportDirectory.AddressOfNameOrdinals == 0 &&
-        imgExportDirectory.AddressOfNames == 0 &&
-        imgExportDirectory.Name == 0)
+    if (imgExportDirectory.d.AddressOfFunctions == 0 &&
+        imgExportDirectory.d.AddressOfNameOrdinals == 0 &&
+        imgExportDirectory.d.AddressOfNames == 0 &&
+        imgExportDirectory.d.Name == 0)
     {
         RETURN_ERROR2(ERROR_EAT_UNACCESSIBLE);
     }
 
-    if (imgExportDirectory.NumberOfFunctions > PE_MAX_EXPORTS_NUMBER)
+    if (imgExportDirectory.d.NumberOfFunctions > PE_MAX_EXPORTS_NUMBER)
     {
         RETURN_ERROR2(ERROR_TOO_MANY_EXPORTS);
     }
 
     // Computing offset of a module name
-    offset = this->RVA2RAW(imgExportDirectory.Name);
+    offset = this->RVA2RAW(imgExportDirectory.d.Name);
     offset += reinterpret_cast<intptr_t>(lpBuffer);
+
+    memset(this->imgExportDirectory.szName, 0, sizeof(this->imgExportDirectory.szName));
+
+    if (verifyAddressBounds(imgExportDirectory.d.Name))
+    {
+        const char* addr = RVA2RAW(imgExportDirectory.d.Name) + (const char*)lpBuffer;
+        size_t len = strlen(addr);
+        strncpy_s(this->imgExportDirectory.szName, 
+            addr, min(sizeof(this->imgExportDirectory.szName), len)
+        );
+    }
 
     // Preparing name of exported module.
     if (this->RVA2RAW(dwAddr) > this->sizeOfFile)
@@ -1127,24 +1137,24 @@ bool PE::ParseEAT(DWORD dwAddressOfEAT)
     size_t addressOfFunctions;
     if (this->bMemoryAnalysis)
     {
-        aOrdinals = (WORD*)(reinterpret_cast<intptr_t>(lpBuffer) + (imgExportDirectory.AddressOfNameOrdinals));
-        addressOfFunctions = (imgExportDirectory.AddressOfFunctions);
+        aOrdinals = (WORD*)(reinterpret_cast<intptr_t>(lpBuffer) + (imgExportDirectory.d.AddressOfNameOrdinals));
+        addressOfFunctions = (imgExportDirectory.d.AddressOfFunctions);
         aAddresses = reinterpret_cast<DWORD*>(reinterpret_cast<intptr_t>(lpBuffer) + addressOfFunctions);
-        aNamesRVA = reinterpret_cast<DWORD*>(reinterpret_cast<intptr_t>(lpBuffer) + (imgExportDirectory.AddressOfNames));
+        aNamesRVA = reinterpret_cast<DWORD*>(reinterpret_cast<intptr_t>(lpBuffer) + (imgExportDirectory.d.AddressOfNames));
     }
     else
     {
         aOrdinals = (WORD*)(reinterpret_cast<intptr_t>(lpBuffer) +
-            this->RVA2RAW(imgExportDirectory.AddressOfNameOrdinals));
-        addressOfFunctions = this->RVA2RAW(imgExportDirectory.AddressOfFunctions);
+            this->RVA2RAW(imgExportDirectory.d.AddressOfNameOrdinals));
+        addressOfFunctions = this->RVA2RAW(imgExportDirectory.d.AddressOfFunctions);
         aAddresses = reinterpret_cast<DWORD*>(reinterpret_cast<intptr_t>(lpBuffer) + addressOfFunctions);
-        aNamesRVA = reinterpret_cast<DWORD*>(reinterpret_cast<intptr_t>(lpBuffer) + this->RVA2RAW(imgExportDirectory.AddressOfNames));
+        aNamesRVA = reinterpret_cast<DWORD*>(reinterpret_cast<intptr_t>(lpBuffer) + this->RVA2RAW(imgExportDirectory.d.AddressOfNames));
     }
 
     WORD byOrdinal = 0;
 
     // Iterating all exported functions from this module
-    for (f = 0; unsigned(f) < imgExportDirectory.NumberOfFunctions; f++)
+    for (f = 0; unsigned(f) < imgExportDirectory.d.NumberOfFunctions; f++)
     {
         ZeroMemory((void*)&expFunc, sizeof(expFunc));
 
@@ -1152,19 +1162,19 @@ bool PE::ParseEAT(DWORD dwAddressOfEAT)
         expFunc.dwOrdinal = 0;
         expFunc.uExportIndex = f;
 
-        if (static_cast<DWORD>(f) >= imgExportDirectory.NumberOfNames)
+        if (static_cast<DWORD>(f) >= imgExportDirectory.d.NumberOfNames)
         {
             expFunc.bIsOrdinal = true;
-            expFunc.wOrdinal = byOrdinal + static_cast<WORD>(imgExportDirectory.Base);
+            expFunc.wOrdinal = byOrdinal + static_cast<WORD>(imgExportDirectory.d.Base);
             byOrdinal++;
         }
         else
         {
-            expFunc.wOrdinal = aOrdinals[f] + static_cast<WORD>(imgExportDirectory.Base);
+            expFunc.wOrdinal = aOrdinals[f] + static_cast<WORD>(imgExportDirectory.d.Base);
         }
 
         wOrdinal = expFunc.wOrdinal;
-        size_t eatIndex = static_cast<DWORD>(wOrdinal) - imgExportDirectory.Base;
+        size_t eatIndex = static_cast<DWORD>(wOrdinal) - imgExportDirectory.d.Base;
 
         if (this->bMemoryAnalysis)
         {
@@ -1176,7 +1186,9 @@ bool PE::ParseEAT(DWORD dwAddressOfEAT)
         {
             if (!expFunc.bIsOrdinal)
                 dwNameRAW = this->RVA2RAW(aNamesRVA[f]) + reinterpret_cast<intptr_t>(lpBuffer);
-            expFunc.dwPtrValue = this->RVA2RAW(aAddresses[eatIndex]) + reinterpret_cast<intptr_t>(lpBuffer);
+
+            ULONGLONG imageBase = GetImageBase();
+            expFunc.dwPtrValue = (aAddresses[eatIndex]) + (imageBase);
         }
 
         expFunc.dwPtrValueRVA = aAddresses[eatIndex];
@@ -3088,11 +3100,11 @@ DWORD PE::HookEAT(const std::string& szExportThunk, DWORD hookedRVA)
         size_t addressOfFunctions = 0;
         if (this->bMemoryAnalysis)
         {
-            addressOfFunctions = (this->imgExportDirectory.AddressOfFunctions);
+            addressOfFunctions = (this->imgExportDirectory.d.AddressOfFunctions);
         }
         else
         {
-            addressOfFunctions = this->RVA2RAW(this->imgExportDirectory.AddressOfFunctions);
+            addressOfFunctions = this->RVA2RAW(this->imgExportDirectory.d.AddressOfFunctions);
         }
 
         vExports[u].dwPtrValue = (vExports[u].dwPtrValue - vExports[u].dwThunkRVA) + hookedRVA;

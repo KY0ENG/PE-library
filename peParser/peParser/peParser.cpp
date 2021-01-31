@@ -360,6 +360,90 @@ void dumpImports(PE& pe)
 	}
 }
 
+void dumpExports(PE& pe)
+{
+	size_t foo = 0;
+	
+	if (pe.isArch86())
+	{
+		foo = pe.imgNtHdrs32.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
+	}
+	else
+	{
+		foo = pe.imgNtHdrs64.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
+	}
+
+	if (foo == 0) return;
+
+	std::wcout << L"EXPORTED FUNCTIONS (" << std::dec << pe.vExports.size() << L"):" << std::endl << std::endl;
+
+	size_t maxlen = 0;
+
+	for (const auto& imp : pe.vExports)
+	{
+		std::string n(imp.szFunction);
+		if (n.length() > maxlen) maxlen = n.length();
+	}
+
+	maxlen += 2;
+
+
+	std::wcout << L"\tIMAGE_EXPORT_DIRECTORY: " << std::endl;
+
+	std::wcout << L"\t"; PRINT_FIELD(L"Characteristics", pe.imgExportDirectory.d.Characteristics, DWORD);
+	std::wcout << L"\t"; PRINT_FIELD(L"TimeDateStamp", pe.imgExportDirectory.d.TimeDateStamp, DWORD);
+	if (pe.imgExportDirectory.d.TimeDateStamp != 0)
+		std::wcout << parseTimestamp(std::wstring(48, L' ') + L'(', pe.imgExportDirectory.d.TimeDateStamp) << L')' << std::endl;
+
+	std::wcout << L"\t"; PRINT_FIELD(L"MajorVersion", pe.imgExportDirectory.d.MajorVersion, WORD);
+	std::wcout << L"\t"; PRINT_FIELD(L"MinorVersion", pe.imgExportDirectory.d.MinorVersion, WORD);
+	std::wcout << L"\t"; PRINT_FIELD(L"Name", pe.imgExportDirectory.d.Name, DWORD);
+
+	std::string names(pe.imgExportDirectory.szName);
+	std::wstring name(names.begin(), names.end());
+
+	std::wcout << std::wstring(48, L' ') << L' (' << name << L')' << std::endl;
+
+	std::wcout << L"\t"; PRINT_FIELD(L"Base", pe.imgExportDirectory.d.Base, DWORD);
+	std::wcout << L"\t"; PRINT_FIELD(L"NumberOfFunctions", pe.imgExportDirectory.d.NumberOfFunctions, DWORD);
+	std::wcout << L"\t"; PRINT_FIELD(L"NumberOfNames", pe.imgExportDirectory.d.NumberOfNames, DWORD);
+	std::wcout << L"\t"; PRINT_FIELD(L"AddressOfFunctions", pe.imgExportDirectory.d.AddressOfFunctions, DWORD);
+	std::wcout << L"\t"; PRINT_FIELD(L"AddressOfNames", pe.imgExportDirectory.d.AddressOfNames, DWORD);
+	std::wcout << L"\t"; PRINT_FIELD(L"AddressOfNameOrdinals", pe.imgExportDirectory.d.AddressOfNameOrdinals, DWORD);
+	std::wcout << std::endl;
+
+	if (!pe.vExports.empty())
+	{
+		std::wcout << L" ";
+		std::wcout << std::setw(5) << std::setfill(L' ') << std::right << L" # " << " | ";
+		std::wcout << std::setw(4) << std::setfill(L'0') << std::right << L"Ord." << L" | ";
+		std::wcout << std::left << std::setw(maxlen) << std::setfill(L' ') << L"Name" << " | ";
+		std::wcout << std::setw(sizeof(void*) * 2 + 4) << std::setfill(L' ') << L"PtrValueVA" << " | ";
+		std::wcout << std::setw(9) << std::setfill(L' ') << L"PtrValueRVA" << " | ";
+		std::wcout << std::setw(9) << std::setfill(L' ') << L"ThunkRVA" << std::endl;
+		std::wcout << L" " << std::wstring(maxlen + 63, L'-');
+		std::wcout << std::endl;
+
+		size_t j = 0;
+		for (const auto& imp : pe.vExports)
+		{
+			auto sn = std::string(imp.szFunction);
+			name = std::wstring(sn.begin(), sn.end());
+
+			std::wcout << L" ";
+			std::wcout << std::setw(5) << std::setfill(L' ') << std::right << std::dec << ++j << " | ";
+			std::wcout << std::setw(4) << std::setfill(L'0') << std::right << std::hex << imp.wOrdinal << L" | ";
+			std::wcout << std::left << std::setw(maxlen) << std::setfill(L' ') << name << " | ";
+			std::wcout << L"0x" << std::setw(sizeof(void*) * 2 + 2) << std::setfill(L' ') << std::hex << imp.dwPtrValue << " | ";
+			std::wcout << L"0x" << std::setw(9) << std::setfill(L' ') << std::hex << imp.dwPtrValueRVA << " | ";
+			std::wcout << L"0x" << std::setw(9) << std::setfill(L' ') << std::hex << imp.dwThunkRVA;
+			std::wcout << std::endl;
+		}
+	}
+
+	std::wcout << std::endl << std::endl;
+}
+
 void parsePeFile(PE& pe)
 {
 	PRINT_LINE;
@@ -381,6 +465,7 @@ void parsePeFile(PE& pe)
 
 	PRINT_LINE;
 	dumpImports(pe);
+	dumpExports(pe);
 }
 
 void analyseFile(std::wstring filePath)
