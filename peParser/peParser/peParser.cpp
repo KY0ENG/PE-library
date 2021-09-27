@@ -703,4 +703,9 @@ int main(int argc, char **argv)
 		std::wcout << L"Analysing dump file: \"" << filepath << L"\"...\n";
 		analyseDump(filepath);
 	}
+	else
+	{
+		std::wstring woperation(operation.begin(), operation.end());
+		std::wcout << L"Unknown operation: " << woperation << std::endl;
+	}
 }
