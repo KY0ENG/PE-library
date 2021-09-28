@@ -59,3 +59,22 @@ Billions and billions and billions and billions and billions and billions and bi
 My typical use of this library is for the Malware Development for Red Team purposes. Such use case requires merely a lightweight codebase capable of analysing mostly well-structured system binaries and for these needs a current implementation excels pretty well.
 
 You are free to go ahead and train your vulnerability analysis & exploitation skills by crafting dodgy PE structures attempting to exploit my tasty bugs. :-) Ohhh, and if you do - please do mind opening an issue as I would be keen on fixing them eventually!
+
+
+
+---
+
+### ☕ Show Support ☕
+
+This and other projects are outcome of sleepless nights and **plenty of hard work**. If you like what I do and appreciate that I always give back to the community,
+[Consider buying me a coffee](https://github.com/sponsors/mgeeky) _(or better a beer)_ just to say thank you! 💪 
+
+---
+
+## Author
+
+```   
+   Mariusz B. / mgeeky, 21
+   <mb [at] binary-offensive.com>
+   (https://github.com/mgeeky)
+```
