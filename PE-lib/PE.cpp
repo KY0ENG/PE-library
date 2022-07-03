@@ -1595,7 +1595,7 @@ bool PE::ApplyAllRelocs(ULONGLONG newImageBase)
 {
     if (!newImageBase)
     {
-        return false;
+        newImageBase = reinterpret_cast<ULONGLONG>(this->lpMapOfFile);
     }
 
     if (this->bReadOnly)
