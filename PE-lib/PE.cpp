@@ -1287,7 +1287,7 @@ bool PE::ParseEAT(DWORD dwAddressOfEAT)
 				ptr = reinterpret_cast<const char*>(this->RVA2RAW(expFunc.dwPtrValueRVA) + reinterpret_cast<intptr_t>(lpBuffer));
 			}
 
-			strncpy_s(expFunc.szForwarder, ptr, sizeof(expFunc.szForwarder));
+            strncpy_s(expFunc.szForwarder, ptr, _TRUNCATE); // "_TRUNCATE" or "sizeof(expFunc.szForwarder) - 1"
 		}
 
 		if (expFunc.dwPtrValue != 0) vExports.push_back(expFunc);
